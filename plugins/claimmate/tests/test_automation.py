@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import shlex
 import subprocess
 import sys
 import tempfile
@@ -27,13 +28,22 @@ from claimmate_core import projects as projects_core  # noqa: E402
 class ClaimMateAutomationTest(unittest.TestCase):
     def setUp(self) -> None:
         self.temporary = tempfile.TemporaryDirectory()
-        self.root = Path(self.temporary.name) / "跨平台报销"
+        self.root = (Path(self.temporary.name) / "跨平台报销").resolve()
         self.root.mkdir()
         self.case_name = "2026-08-18至08-20_南京"
-        self.fake_codex = Path(self.temporary.name) / "fake-codex.cmd"
-        self.fake_codex.write_text(
-            f'@"{sys.executable}" "{FAKE_CODEX}" %*\n', encoding="utf-8"
-        )
+        if os.name == "nt":
+            self.fake_codex = Path(self.temporary.name) / "fake-codex.cmd"
+            self.fake_codex.write_text(
+                f'@"{sys.executable}" "{FAKE_CODEX}" %*\n', encoding="utf-8"
+            )
+        else:
+            self.fake_codex = Path(self.temporary.name) / "fake-codex"
+            self.fake_codex.write_text(
+                "#!/bin/sh\n"
+                f"exec {shlex.quote(sys.executable)} {shlex.quote(str(FAKE_CODEX))} \"$@\"\n",
+                encoding="utf-8",
+            )
+            self.fake_codex.chmod(0o755)
         self.run_script(CORE_SCRIPT, "init", str(self.root), "--case-name", self.case_name)
 
     def tearDown(self) -> None:

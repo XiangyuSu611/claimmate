@@ -31,7 +31,7 @@ Give onboarding in exactly three sections:
 
 1. `新建项目`: create and manage multiple trips.
 2. `更新材料`: chat, folder, and email intake; recognition; corrections; undo; requirements maintenance.
-3. `交付财务`: named-trip readiness, missing-material review, itemized workbook, export, and archive.
+3. `交付财务`: named-trip readiness, missing-material review, itemized workbook, automatic ZIP packaging, and archive.
 
 Keep the direct onboarding compact: one or two action-oriented bullets per section, then point to `开始使用 ClaimMate.md` for details. Always show the resolved absolute `待处理` folder path instead of only the folder name. Mention the three user-maintained workbook columns and summed-payment reconciliation; do not repeat implementation internals in the first-use card.
 

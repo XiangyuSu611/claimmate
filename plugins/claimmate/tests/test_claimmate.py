@@ -5,6 +5,7 @@ import hashlib
 import json
 import importlib.util
 import os
+import shlex
 import subprocess
 import sys
 import tempfile
@@ -37,13 +38,22 @@ def load_claimmate_module():
 class ClaimMateWorkflowTest(unittest.TestCase):
     def setUp(self) -> None:
         self.temporary = tempfile.TemporaryDirectory()
-        self.root = Path(self.temporary.name) / "真实报销测试"
+        self.root = (Path(self.temporary.name) / "真实报销测试").resolve()
         self.case_name = "2026-08-18至08-20_南京"
         self.root.mkdir()
-        self.fake_codex = Path(self.temporary.name) / "fake-codex.cmd"
-        self.fake_codex.write_text(
-            f'@"{sys.executable}" "{FAKE_CODEX}" %*\n', encoding="utf-8"
-        )
+        if os.name == "nt":
+            self.fake_codex = Path(self.temporary.name) / "fake-codex.cmd"
+            self.fake_codex.write_text(
+                f'@"{sys.executable}" "{FAKE_CODEX}" %*\n', encoding="utf-8"
+            )
+        else:
+            self.fake_codex = Path(self.temporary.name) / "fake-codex"
+            self.fake_codex.write_text(
+                "#!/bin/sh\n"
+                f"exec {shlex.quote(sys.executable)} {shlex.quote(str(FAKE_CODEX))} \"$@\"\n",
+                encoding="utf-8",
+            )
+            self.fake_codex.chmod(0o755)
         self.files = {
             "海底捞_268元_发票.txt": "dining invoice unique",
             "海底捞_268元_付款记录.txt": "dining payment unique",
@@ -330,7 +340,8 @@ class ClaimMateWorkflowTest(unittest.TestCase):
         finished_case = self.root / "已结束" / self.case_name
         self.assertTrue(finished_case.is_dir())
         self.assertFalse(case.exists())
-        self.assertEqual(len(list(finished_case.glob("报销归档_*.zip"))), 1)
+        archive_path = finished_case / "2026-08-18至08-20-南京-测试用户-报销文件.zip"
+        self.assertTrue(archive_path.is_file())
 
     def test_reimport_recovers_a_missing_registered_file_instead_of_marking_duplicate(self) -> None:
         self.init()
@@ -389,7 +400,7 @@ class ClaimMateWorkflowTest(unittest.TestCase):
             "一张汇总发票可以对应多笔付款记录",
             "付款合计与发票价税合计核验",
             "付款差额",
-            "归档北京出差报销",
+            "时间-地点-报销人-报销文件.zip",
         ):
             self.assertIn(expected, guide)
         top_level_sections = [line for line in guide.splitlines() if line.startswith("## ")]
@@ -893,6 +904,8 @@ class ClaimMateWorkflowTest(unittest.TestCase):
         self.assertEqual(len(rows), 1)
         self.assertEqual(rows[0]["收款人"], "测试用户")
         self.assertEqual(rows[0]["金额（元）"], "268.00")
+        self.assertNotIn("/", rows[0]["材料文件"])
+        self.assertNotIn("\\", rows[0]["材料文件"])
         with zipfile.ZipFile(xlsx_path) as workbook:
             sheet_xml = unescape(workbook.read("xl/worksheets/sheet1.xml").decode("utf-8"))
         self.assertIn("测试用户", sheet_xml)
@@ -1112,7 +1125,10 @@ class ClaimMateWorkflowTest(unittest.TestCase):
         report = json.loads((case / "处理报告.json").read_text(encoding="utf-8"))
         self.assertTrue(report["finance_feedback_review"]["passed"])
         self.run_cli("archive", str(self.root))
-        archive_path = next((self.root / "已结束" / "2026-06_北京出差").glob("报销归档_*.zip"))
+        archive_path = (
+            self.root / "已结束" / "2026-06_北京出差" /
+            "2026-06-北京出差-测试用户-报销文件.zip"
+        )
         with zipfile.ZipFile(archive_path) as archive:
             names = archive.namelist()
         self.assertIn("manifest/finance-feedback-review.json", names)

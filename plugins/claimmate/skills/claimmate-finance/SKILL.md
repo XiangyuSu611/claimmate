@@ -23,8 +23,8 @@ python scripts/claimmate.py archive <folder> --project "合肥"
 4. Report only this trip's unresolved files, duplicates, conflicts, missing profile, and missing blocking materials, citing rule IDs.
 5. Reconcile each invoice total against the sum of all matched payment records. Partial, excess, or unknown payment totals block delivery.
 6. When complete, create `报销明细表.xlsx` and `.csv`, one row per expense, including payment total and difference. Default `收款人` to the stored user name.
-7. Export requirement review, missing-material list, processing report, and policy evidence.
-8. Archive after a passing export; force only after explicit acceptance.
+7. Export requirement review, missing-material list, processing report, and policy evidence. Show material filenames without workspace or project-folder prefixes.
+8. When a named-trip delivery check passes, immediately run `archive` without asking for a second confirmation, then report the final ZIP path. Name the ZIP `时间-地点-报销人-报销文件.zip`. Use `--force` only after the user explicitly accepts unresolved issues.
 
 ## Boundaries
 

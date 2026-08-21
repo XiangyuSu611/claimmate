@@ -464,11 +464,16 @@ def write_detail_xlsx_fallback(
         workbook.writestr("xl/worksheets/sheet1.xml", sheet_xml)
 
 
+def claim_output_path(root: Path, state: dict[str, Any]) -> Path:
+    stage = FINISHED if state.get("status") == "archived" else ACTIVE
+    return root / stage / state["case_name"]
+
+
 def export_claim(root: Path, state: dict[str, Any], config: dict[str, Any]) -> list[Path]:
     default_recipient = claimant_name(config)
     if not default_recipient:
         raise SystemExit("缺少使用者姓名，无法生成交付明细表。请先设置使用者姓名。")
-    output = active_case_path(root, state)
+    output = claim_output_path(root, state)
     output.mkdir(parents=True, exist_ok=True)
     requirement_catalog = load_requirement_catalog(root, persist_snapshot=True)
     requirements_review, finance_feedback_review = evaluate_effective_requirements(
@@ -493,7 +498,7 @@ def export_claim(root: Path, state: dict[str, Any], config: dict[str, Any]) -> l
             expense.get("category"), {}
         ).get("label", expense.get("category"))
         files = [
-            state["documents"][digest]["current_path"]
+            Path(str(state["documents"][digest]["current_path"])).name
             for digest in expense.get("documents", []) if digest in state["documents"]
         ]
         missing = list(details["missing"])
@@ -699,6 +704,67 @@ def command_undo(args: argparse.Namespace) -> None:
     print(f"已撤销 {transaction['id']}，恢复 {restored} 个文件。")
 
 
+def archive_filename(state: dict[str, Any], config: dict[str, Any]) -> str:
+    project = safe_name(str(state.get("case_name") or "报销项目"), "报销项目").replace("_", "-")
+    recipient = safe_name(claimant_name(config), "未登记报销人").replace("_", "-")
+    return f"{project}-{recipient}-报销文件.zip"
+
+
+def write_archive_zip(
+    root: Path,
+    state: dict[str, Any],
+    config: dict[str, Any],
+    finished_case: Path,
+) -> Path:
+    archive_path = finished_case / archive_filename(state, config)
+    temporary = archive_path.with_name(f".{archive_path.name}.{timestamp()}.partial")
+    state["status"] = "archived"
+    state.setdefault("archived_at", now_iso())
+    state["archive_path"] = relative(archive_path, root)
+    try:
+        with zipfile.ZipFile(temporary, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+            for path in finished_case.rglob("*"):
+                if not path.is_file() or path in {archive_path, temporary}:
+                    continue
+                if path.suffix.lower() == ".zip":
+                    continue
+                archive.write(path, path.relative_to(finished_case).as_posix())
+            archive.writestr(
+                "manifest/project-state.json",
+                json.dumps(state, ensure_ascii=False, indent=2) + "\n",
+            )
+            feedback_review = state.get("finance_feedback_review", {})
+            requirements_review = state.get("requirements_review", {})
+            archive.writestr(
+                "manifest/requirements-review.json",
+                json.dumps(requirements_review, ensure_ascii=False, indent=2) + "\n",
+            )
+            requirements_workbook = requirements_workbook_path(root)
+            if requirements_workbook.is_file():
+                archive.write(requirements_workbook, "manifest/报销要求.xlsx")
+            if feedback_review.get("entries"):
+                archive.writestr(
+                    "manifest/finance-feedback-review.json",
+                    json.dumps(feedback_review, ensure_ascii=False, indent=2) + "\n",
+                )
+                for entry in feedback_review["entries"]:
+                    source_file = entry.get("source_file")
+                    if not source_file:
+                        continue
+                    source_path = absolute(root, source_file)
+                    if source_path.exists() and source_path.is_file():
+                        archive.write(
+                            source_path,
+                            f"manifest/finance-feedback-sources/{source_path.name}",
+                        )
+            archive.write(metadata_paths(root)["config"], "manifest/config.json")
+        temporary.replace(archive_path)
+    finally:
+        temporary.unlink(missing_ok=True)
+    save_state(root, state)
+    return archive_path
+
+
 @locked_command
 def command_archive(args: argparse.Namespace) -> None:
     root = Path(args.folder).expanduser().resolve()
@@ -734,47 +800,7 @@ def command_archive(args: argparse.Namespace) -> None:
     }
     migrate_state_paths(state, stage_mapping, state["case_name"])
     rewrite_transactions(root, stage_mapping, state["case_name"])
-    archive_path = finished_case / f"报销归档_{timestamp()}.zip"
-    state["status"] = "archived"
-    state["archived_at"] = now_iso()
-    state["archive_path"] = relative(archive_path, root)
-    save_state(root, state)
-    with zipfile.ZipFile(archive_path, "w", compression=zipfile.ZIP_DEFLATED) as archive:
-        for path in finished_case.rglob("*"):
-            if not path.is_file() or path == archive_path:
-                continue
-            if path.suffix.lower() == ".zip":
-                continue
-            archive.write(path, path.relative_to(finished_case).as_posix())
-        archive.writestr(
-            "manifest/project-state.json",
-            json.dumps(state, ensure_ascii=False, indent=2) + "\n",
-        )
-        feedback_review = state.get("finance_feedback_review", {})
-        requirements_review = state.get("requirements_review", {})
-        archive.writestr(
-            "manifest/requirements-review.json",
-            json.dumps(requirements_review, ensure_ascii=False, indent=2) + "\n",
-        )
-        requirements_workbook = requirements_workbook_path(root)
-        if requirements_workbook.is_file():
-            archive.write(requirements_workbook, "manifest/报销要求.xlsx")
-        if feedback_review.get("entries"):
-            archive.writestr(
-                "manifest/finance-feedback-review.json",
-                json.dumps(feedback_review, ensure_ascii=False, indent=2) + "\n",
-            )
-            for entry in feedback_review["entries"]:
-                source_file = entry.get("source_file")
-                if not source_file:
-                    continue
-                source_path = absolute(root, source_file)
-                if source_path.exists() and source_path.is_file():
-                    archive.write(
-                        source_path,
-                        f"manifest/finance-feedback-sources/{source_path.name}",
-                    )
-        archive.write(metadata_paths(root)["config"], "manifest/config.json")
+    archive_path = write_archive_zip(root, state, config, finished_case)
     print(f"归档完成：{relative(archive_path, root)}")
     if unresolved:
         print(f"注意：归档包含 {unresolved} 项未解决问题。")
