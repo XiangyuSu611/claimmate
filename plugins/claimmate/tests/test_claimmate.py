@@ -173,6 +173,7 @@ class ClaimMateWorkflowTest(unittest.TestCase):
             expected=1,
         )
         self.assertIn("需要确认是否接入邮箱", missing_choice.stderr)
+        self.assertIn("自动下载并处理发票、付款记录等报销附件", missing_choice.stderr)
         self.assertFalse((setup_root / ".claimmate" / "projects.json").exists())
 
         initialized = self.run_raw_cli(
@@ -1047,6 +1048,33 @@ class ClaimMateWorkflowTest(unittest.TestCase):
         )
         document = next(iter(beijing["documents"].values()))
         self.assertTrue(document["current_path"].startswith(f"流程中/{beijing['case_name']}/"))
+
+    def test_email_material_waits_without_a_project_and_new_project_revisits_it_once(self) -> None:
+        for path in self.root.iterdir():
+            path.unlink()
+        self.run_cli("init", str(self.root))
+        filename = "奥地利酒店_680元_发票.txt"
+        source = self.root / "待处理" / filename
+        source.write_text("austria hotel invoice", encoding="utf-8")
+
+        checked = self.run_cli("check", str(self.root))
+        self.assertIn("当前还没有出差报销项目", checked.stdout)
+        registry = self.registry()
+        self.assertEqual(len(registry["unassigned_documents"]), 1)
+        held = self.root / "待处理" / "待归属" / filename
+        self.assertTrue(held.is_file())
+        self.assertEqual(intake_core.discover_inputs(self.root), [])
+
+        created = self.run_cli("new", str(self.root), "--case-name", "2026-06_奥地利")
+        self.assertIn("重新判断并归入 1 个待归属材料", created.stdout)
+        registry = self.registry()
+        self.assertFalse(registry["unassigned_documents"])
+        project = next(iter(registry["projects"].values()))
+        self.assertEqual(len(project["documents"]), 1)
+        self.assertFalse(held.exists())
+        self.assertTrue(list(
+            (self.root / "流程中" / "2026-06_奥地利").glob("EXP-*_住宿费_680元_发票.txt")
+        ))
 
     def test_conversational_correction_can_reassign_several_files(self) -> None:
         for path in self.root.iterdir():

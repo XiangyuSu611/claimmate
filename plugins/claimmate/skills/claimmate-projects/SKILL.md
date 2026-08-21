@@ -22,7 +22,8 @@ python scripts/claimmate.py status <folder> [--project "合肥"]
 ## Rules
 
 - Ask for the user's name before first initialization; never infer it.
-- Ask whether to connect email before first initialization; pass `connect` or `skip` only from the user's explicit answer.
+- Ask whether to connect email before first initialization and explain that it is used to automatically download and process invoices, payment records, and other reimbursement attachments; pass `connect` or `skip` only from the user's explicit answer.
+- If an email attachment cannot be matched to an existing project, keep it in `待处理/待归属`. Do not repeatedly scan that holding folder. Creating a project triggers one model-assisted re-evaluation of pending unassigned attachments.
 - Use the stored name as the default `收款人`; update it only when asked.
 - Name active trips `时间范围_地点`; approximate months are acceptable until exact dates are known.
 - Keep active trips under `流程中`, archived trips under `已结束`, and visible trip folders flat.

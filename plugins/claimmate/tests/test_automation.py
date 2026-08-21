@@ -101,6 +101,13 @@ class ClaimMateAutomationTest(unittest.TestCase):
         self.assertEqual(len(list(destination.glob("EXP-*_住宿费_680元_发票.txt"))), 1)
         self.assertFalse(source.exists())
 
+    def test_unassigned_holding_folder_does_not_retrigger_the_watcher(self) -> None:
+        held = self.root / "待处理" / "待归属" / "暂未建项目_发票.txt"
+        held.parent.mkdir(parents=True, exist_ok=True)
+        held.write_text("invoice waiting for project", encoding="utf-8")
+
+        self.assertEqual(automation.input_snapshot(self.root), {})
+
     def test_stability_tracker_waits_for_unchanged_file(self) -> None:
         tracker = automation.StabilityTracker(2)
         first = {"receipt.pdf": (100, 1)}

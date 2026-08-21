@@ -273,7 +273,10 @@ def setup_state(config: dict[str, Any]) -> dict[str, Any]:
 def record_email_intake_choice(config: dict[str, Any], choice: str) -> str:
     normalized = str(choice or "").strip().casefold()
     if normalized not in SETUP_EMAIL_CHOICES:
-        raise SystemExit("请选择是否接入邮箱：connect（接入）或 skip（暂不接入）。")
+        raise SystemExit(
+            "请选择是否接入邮箱（用于自动下载并处理发票、付款记录等报销附件）："
+            "connect（接入）或 skip（暂不接入）。"
+        )
     setup = setup_state(config)
     setup["email_intake_choice"] = normalized
     setup["email_choice_confirmed_at"] = now_iso()
@@ -282,7 +285,10 @@ def record_email_intake_choice(config: dict[str, Any], choice: str) -> str:
 
 def email_intake_choice_label(config: dict[str, Any]) -> str:
     choice = setup_state(config).get("email_intake_choice")
-    return {"connect": "接入邮箱", "skip": "暂不接入邮箱"}.get(str(choice), "尚未选择")
+    return {
+        "connect": "接入邮箱（自动下载并处理报销附件）",
+        "skip": "暂不接入邮箱（不自动获取报销附件）",
+    }.get(str(choice), "尚未选择")
 
 
 def email_intake_is_configured(root: Path) -> bool:
@@ -638,7 +644,7 @@ def guide_text(case_name: str, root: Path | None = None) -> str:
 
 ## 第一次使用：先完成配置
 
-ClaimMate 会先确认使用者姓名、是否接入邮箱，并展示完整的三列 `报销要求.xlsx`。Scheme 未确认前只建立目录，不识别、移动或重命名材料；确认后才启动监听器并显示正常引导。以后直接修改工作簿时，也需要重新展示和确认。
+ClaimMate 会先确认使用者姓名、是否接入邮箱，并展示完整的三列 `报销要求.xlsx`。接入邮箱用于自动下载并处理发票、付款记录等报销附件；无法判断项目的附件会安全留在 `待处理/待归属`，新建项目后再自动重判。Scheme 未确认前只建立目录，不识别、移动或重命名材料；确认后才启动监听器并显示正常引导。以后直接修改工作簿时，也需要重新展示和确认。
 
 ### 第一步：新建报销项目
 

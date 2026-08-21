@@ -25,7 +25,7 @@ Read [references/quick-start.md](references/quick-start.md) for the complete lif
 
 ## First use
 
-Use `$claimmate-projects` first. Ask for the user's name and whether to connect email; never infer either answer. Initialization creates the folders and editable `报销要求.xlsx`, but does not process files or start the listener yet. Use `$claimmate-requirements` to show the full three-column Scheme, apply any previewed and confirmed edits, and ask the user to confirm the whole Scheme. Only `requirements-confirm --confirmed` completes setup, starts processing, installs the listener unless declined, and reveals the normal onboarding. If the user chose email, finish its secure configuration before Scheme confirmation.
+Use `$claimmate-projects` first. Ask for the user's name and whether to connect email, explaining that email integration automatically downloads and processes invoices, payment records, and other reimbursement attachments; never infer either answer. Initialization creates the folders and editable `报销要求.xlsx`, but does not process files or start the listener yet. Use `$claimmate-requirements` to show the full three-column Scheme, apply any previewed and confirmed edits, and ask the user to confirm the whole Scheme. Only `requirements-confirm --confirmed` completes setup, starts processing, installs the listener unless declined, and reveals the normal onboarding. If the user chose email, finish its secure configuration before Scheme confirmation. Email attachments that cannot yet be matched to a project stay in `待处理/待归属`; creating a project triggers one re-evaluation and the watcher must not repeatedly scan that holding folder.
 
 Give onboarding in exactly three sections:
 
