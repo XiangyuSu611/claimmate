@@ -1,0 +1,4 @@
+interface:
+  display_name: "ClaimMate"
+  short_description: "自动整理多次出差报销，并按财务要求完成交付核验"
+  default_prompt: "使用 $claimmate 管理多个并行出差报销项目，自动识别材料归属，并在指定出差交给财务前集中核验。"

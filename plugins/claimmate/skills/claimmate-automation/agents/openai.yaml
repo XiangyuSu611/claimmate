@@ -1,0 +1,4 @@
+interface:
+  display_name: "ClaimMate 自动接收"
+  short_description: "管理文件夹监听、邮件接收和后台服务"
+  default_prompt: "使用 $claimmate-automation 配置或检查 ClaimMate 的文件夹监听、邮件接收和后台服务。"

@@ -1,0 +1,18 @@
+{
+  "name": "claimmate",
+  "version": "0.1.0+codex.20260821093807",
+  "description": "Manage business-travel claims with model-based recognition, one editable requirements schema, and auditable finance delivery.",
+  "author": {
+    "name": "Xiangyu Su"
+  },
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "ClaimMate",
+    "shortDescription": "Model-recognized travel claims with one editable policy schema.",
+    "longDescription": "ClaimMate separates projects, intake, reimbursement requirements, finance delivery, and automation into focused skills. First setup records the user name and email choice, displays the complete three-column reimbursement Scheme, and waits for explicit confirmation before processing files or starting the listener. A large model owns every semantic judgment, including travel scope, expense and material types, amounts, routing, pairing, and special-condition applicability. Deterministic code validates structured outputs, preserves originals, applies concise flat filenames such as EXP-001_\u673a\u7968_1551\u5143_\u53d1\u7968, and reconciles each invoice against the sum of one or more payment records. Users maintain only expense type, required materials, and other finance requirements in \u62a5\u9500\u8981\u6c42.xlsx. Finance feedback is model-extracted and previewed, then after user confirmation either incorporated into the global workbook or retained as a project-scoped temporary requirement with source and change evidence. Delivery exports an itemized workbook with the stored user name as the default recipient.",
+    "developerName": "Xiangyu Su",
+    "category": "Productivity",
+    "capabilities": [],
+    "defaultPrompt": "Use $claimmate to coordinate business-travel reimbursement projects, model-assisted intake, the single requirements schema, and finance delivery."
+  }
+}

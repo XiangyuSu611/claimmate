@@ -1,0 +1,44 @@
+{
+  "claimant": {
+    "name": ""
+  },
+  "setup": {
+    "email_intake_choice": null,
+    "email_choice_confirmed_at": null,
+    "requirements_confirmed_at": null,
+    "requirements_sha256": null,
+    "requirements_rows": [],
+    "requirements_initial_sha256": null,
+    "requirements_initial_rows": [],
+    "requirements_confirmation_source": null,
+    "start_service_after_confirmation": true,
+    "completed_at": null
+  },
+  "scope": {
+    "claim_type": "business_travel",
+    "label": "出差报销",
+    "allow_non_travel": false
+  },
+  "model_processing": {
+    "enabled": true,
+    "provider": "codex-cli",
+    "model": null,
+    "reasoning_effort": "medium",
+    "timeout_seconds": 180,
+    "batch_size": 12,
+    "max_text_characters": 30000,
+    "minimum_confidence": 0.72,
+    "on_failure": "hold"
+  },
+  "categories": {
+    "transport": {"folder": "交通", "label": "交通", "scope": "business-travel"},
+    "accommodation": {"folder": "住宿", "label": "住宿", "scope": "business-travel"},
+    "dining": {"folder": "餐饮", "label": "餐饮", "scope": "business-travel"},
+    "registration": {"folder": "注册费", "label": "注册费", "scope": "business-travel"},
+    "membership": {"folder": "会员费", "label": "会员费", "scope": "business-travel"},
+    "printing": {"folder": "打印费", "label": "打印费", "scope": "business-travel"},
+    "visa": {"folder": "签证费", "label": "签证费", "scope": "business-travel"},
+    "insurance": {"folder": "旅行保险", "label": "旅行保险", "scope": "business-travel"},
+    "other": {"folder": "其他出差费用", "label": "其他出差费用", "scope": "business-travel"}
+  }
+}

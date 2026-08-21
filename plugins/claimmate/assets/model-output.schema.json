@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["decisions"],
+  "properties": {
+    "decisions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "document_id",
+          "in_scope",
+          "scope_reason",
+          "project_id",
+          "role",
+          "category_key",
+          "category_label",
+          "expense_type_key",
+          "expense_label",
+          "expense_key",
+          "material_type",
+          "applicable_requirement_ids",
+          "assessed_condition_rule_ids",
+          "merchant",
+          "amount",
+          "date_tokens",
+          "reference_tokens",
+          "confidence",
+          "needs_review",
+          "evidence"
+        ],
+        "properties": {
+          "document_id": {"type": "string"},
+          "in_scope": {"type": "boolean"},
+          "scope_reason": {"type": ["string", "null"]},
+          "project_id": {"type": ["string", "null"]},
+          "role": {
+            "type": "string",
+            "enum": ["invoice", "payment", "supporting", "unknown"]
+          },
+          "category_key": {"type": ["string", "null"]},
+          "category_label": {"type": ["string", "null"]},
+          "expense_type_key": {"type": ["string", "null"]},
+          "expense_label": {"type": ["string", "null"]},
+          "expense_key": {"type": ["string", "null"]},
+          "material_type": {"type": ["string", "null"]},
+          "applicable_requirement_ids": {
+            "type": "array",
+            "items": {"type": "string"}
+          },
+          "assessed_condition_rule_ids": {
+            "type": "array",
+            "items": {"type": "string"}
+          },
+          "merchant": {"type": ["string", "null"]},
+          "amount": {"type": ["string", "null"]},
+          "date_tokens": {
+            "type": "array",
+            "items": {"type": "string"}
+          },
+          "reference_tokens": {
+            "type": "array",
+            "items": {"type": "string"}
+          },
+          "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+          "needs_review": {"type": "boolean"},
+          "evidence": {
+            "type": "array",
+            "items": {"type": "string"}
+          }
+        }
+      }
+    }
+  }
+}

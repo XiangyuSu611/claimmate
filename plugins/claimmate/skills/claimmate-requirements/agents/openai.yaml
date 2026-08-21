@@ -1,0 +1,4 @@
+interface:
+  display_name: "ClaimMate 报销要求"
+  short_description: "维护费用类型、材料要求、替代项和特殊条件"
+  default_prompt: "使用 $claimmate-requirements 查看或维护唯一的报销要求 Schema，并保留财务政策来源。"

@@ -1,0 +1,4 @@
+interface:
+  display_name: "ClaimMate 项目"
+  short_description: "初始化工作区并管理多个出差项目"
+  default_prompt: "使用 $claimmate-projects 初始化出差报销工作区，记录使用者姓名，并创建或管理出差项目。"

@@ -1,0 +1,4 @@
+interface:
+  display_name: "ClaimMate 财务交付"
+  short_description: "核验一个出差项目并生成财务交付包"
+  default_prompt: "使用 $claimmate-finance 按唯一报销要求 Schema 核验指定出差，并生成明细表和交付包。"
