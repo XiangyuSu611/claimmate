@@ -726,9 +726,12 @@ def write_archive_zip(
             for path in finished_case.rglob("*"):
                 if not path.is_file() or path in {archive_path, temporary}:
                     continue
+                member = path.relative_to(finished_case)
+                if any(part.startswith(".") or part.startswith("~$") for part in member.parts):
+                    continue
                 if path.suffix.lower() == ".zip":
                     continue
-                archive.write(path, path.relative_to(finished_case).as_posix())
+                archive.write(path, member.as_posix())
             archive.writestr(
                 "manifest/project-state.json",
                 json.dumps(state, ensure_ascii=False, indent=2) + "\n",
