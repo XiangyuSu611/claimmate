@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import shlex
 import subprocess
 import sys
 import tempfile
@@ -27,13 +28,22 @@ from claimmate_core import projects as projects_core  # noqa: E402
 class ClaimMateAutomationTest(unittest.TestCase):
     def setUp(self) -> None:
         self.temporary = tempfile.TemporaryDirectory()
-        self.root = Path(self.temporary.name) / "跨平台报销"
+        self.root = (Path(self.temporary.name) / "跨平台报销").resolve()
         self.root.mkdir()
         self.case_name = "2026-08-18至08-20_南京"
-        self.fake_codex = Path(self.temporary.name) / "fake-codex.cmd"
-        self.fake_codex.write_text(
-            f'@"{sys.executable}" "{FAKE_CODEX}" %*\n', encoding="utf-8"
-        )
+        if os.name == "nt":
+            self.fake_codex = Path(self.temporary.name) / "fake-codex.cmd"
+            self.fake_codex.write_text(
+                f'@"{sys.executable}" "{FAKE_CODEX}" %*\n', encoding="utf-8"
+            )
+        else:
+            self.fake_codex = Path(self.temporary.name) / "fake-codex"
+            self.fake_codex.write_text(
+                "#!/bin/sh\n"
+                f"exec {shlex.quote(sys.executable)} {shlex.quote(str(FAKE_CODEX))} \"$@\"\n",
+                encoding="utf-8",
+            )
+            self.fake_codex.chmod(0o755)
         self.run_script(CORE_SCRIPT, "init", str(self.root), "--case-name", self.case_name)
 
     def tearDown(self) -> None:
@@ -90,6 +100,13 @@ class ClaimMateAutomationTest(unittest.TestCase):
         destination = self.root / "流程中" / self.case_name
         self.assertEqual(len(list(destination.glob("EXP-*_住宿费_680元_发票.txt"))), 1)
         self.assertFalse(source.exists())
+
+    def test_unassigned_holding_folder_does_not_retrigger_the_watcher(self) -> None:
+        held = self.root / "待处理" / "待归属" / "暂未建项目_发票.txt"
+        held.parent.mkdir(parents=True, exist_ok=True)
+        held.write_text("invoice waiting for project", encoding="utf-8")
+
+        self.assertEqual(automation.input_snapshot(self.root), {})
 
     def test_stability_tracker_waits_for_unchanged_file(self) -> None:
         tracker = automation.StabilityTracker(2)

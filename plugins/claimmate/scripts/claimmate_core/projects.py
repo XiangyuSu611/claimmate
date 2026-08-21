@@ -48,7 +48,7 @@ def direct_onboarding_text(root: Path, registry: dict[str, Any]) -> str:
         "\n3. 交付财务\n"
         "- 项目结束时点名说“北京出差报销要交给财务了”。\n"
         "- 一张发票可以对应多笔付款记录；ClaimMate 按付款合计核验，少付、多付或金额未知都会提示。\n"
-        "- 通过后生成逐项明细表，包含付款合计和差额；每项收款人默认使用初始化时登记的姓名。\n"
+        "- 通过后生成逐项明细表并自动归档打包；每项收款人默认使用初始化时登记的姓名。\n"
         "- ClaimMate 不会未经确认替你提交报销。\n"
         f"\n完整说明：{GUIDE}"
     )
@@ -69,7 +69,10 @@ def command_init(args: argparse.Namespace) -> None:
     if getattr(args, "email_choice", None):
         record_email_intake_choice(config, args.email_choice)
     if setup_state(config).get("email_intake_choice") not in SETUP_EMAIL_CHOICES:
-        raise SystemExit("首次初始化需要确认是否接入邮箱，请提供 --email-choice connect 或 skip。")
+        raise SystemExit(
+            "首次初始化需要确认是否接入邮箱（用于自动下载并处理发票、付款记录等报销附件），"
+            "请提供 --email-choice connect 或 skip。"
+        )
     setup_state(config)["start_service_after_confirmation"] = not args.no_service
     before_registry = copy.deepcopy(registry) if existed else None
     project = None
@@ -199,18 +202,17 @@ def command_new(args: argparse.Namespace) -> None:
         print(f"已新建出差报销项目：{project['case_name']}（{project['project_id']}）")
         print("首次配置尚未完成；请先查看并确认 Scheme，之后再发送或处理材料。")
         return
-    operations: list[dict[str, str]] = []
-    resolved = revisit_unassigned_documents(root, registry, config, operations, False)
-    save_project_registry(root, registry)
-    if resolved:
-        record_transaction(
-            root,
-            before_registry,
-            registry,
-            operations,
-            {"created_project": project["project_id"], "resolved_unassigned": resolved},
-        )
+    result = process_routed_inputs(
+        root,
+        registry,
+        config,
+        False,
+        before_registry,
+        force_model_revisit=True,
+    )
     print(f"已新建出差报销项目：{project['case_name']}（{project['project_id']}）")
+    if result["resolved"]:
+        print(f"已根据新项目重新判断并归入 {result['resolved']} 个待归属材料。")
     print("后续可以继续交叉发送不同项目的材料，ClaimMate 会逐份判断归属。")
     print(f"准备提交时说：“{project['case_name']}要交给财务了”。")
 
@@ -471,7 +473,18 @@ def command_check(args: argparse.Namespace) -> None:
     registry, config = load_project_registry(root)
     require_setup_ready(root, config)
     if not registry.get("projects"):
-        raise SystemExit("当前还没有出差报销项目，请先说“新建一个……出差报销”。")
+        before_registry = copy.deepcopy(registry)
+        result = process_routed_inputs(
+            root,
+            registry,
+            config,
+            args.dry_run,
+            before_registry,
+            force_model_revisit=getattr(args, "revisit", False),
+        )
+        print_result(result)
+        print("当前还没有出差报销项目；报销附件已安全保留在待处理/待归属。新建项目后会自动重新判断归属。")
+        return
     if args.project:
         state = select_project(registry, args.project, include_archived=False)
     else:

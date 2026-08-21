@@ -1,6 +1,6 @@
 {
   "name": "claimmate",
-  "version": "0.1.0+codex.20260821093807",
+  "version": "1.0.0",
   "description": "Manage business-travel claims with model-based recognition, one editable requirements schema, and auditable finance delivery.",
   "author": {
     "name": "Xiangyu Su"

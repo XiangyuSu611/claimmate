@@ -5,6 +5,7 @@ import hashlib
 import json
 import importlib.util
 import os
+import shlex
 import subprocess
 import sys
 import tempfile
@@ -37,13 +38,22 @@ def load_claimmate_module():
 class ClaimMateWorkflowTest(unittest.TestCase):
     def setUp(self) -> None:
         self.temporary = tempfile.TemporaryDirectory()
-        self.root = Path(self.temporary.name) / "真实报销测试"
+        self.root = (Path(self.temporary.name) / "真实报销测试").resolve()
         self.case_name = "2026-08-18至08-20_南京"
         self.root.mkdir()
-        self.fake_codex = Path(self.temporary.name) / "fake-codex.cmd"
-        self.fake_codex.write_text(
-            f'@"{sys.executable}" "{FAKE_CODEX}" %*\n', encoding="utf-8"
-        )
+        if os.name == "nt":
+            self.fake_codex = Path(self.temporary.name) / "fake-codex.cmd"
+            self.fake_codex.write_text(
+                f'@"{sys.executable}" "{FAKE_CODEX}" %*\n', encoding="utf-8"
+            )
+        else:
+            self.fake_codex = Path(self.temporary.name) / "fake-codex"
+            self.fake_codex.write_text(
+                "#!/bin/sh\n"
+                f"exec {shlex.quote(sys.executable)} {shlex.quote(str(FAKE_CODEX))} \"$@\"\n",
+                encoding="utf-8",
+            )
+            self.fake_codex.chmod(0o755)
         self.files = {
             "海底捞_268元_发票.txt": "dining invoice unique",
             "海底捞_268元_付款记录.txt": "dining payment unique",
@@ -163,6 +173,7 @@ class ClaimMateWorkflowTest(unittest.TestCase):
             expected=1,
         )
         self.assertIn("需要确认是否接入邮箱", missing_choice.stderr)
+        self.assertIn("自动下载并处理发票、付款记录等报销附件", missing_choice.stderr)
         self.assertFalse((setup_root / ".claimmate" / "projects.json").exists())
 
         initialized = self.run_raw_cli(
@@ -325,12 +336,22 @@ class ClaimMateWorkflowTest(unittest.TestCase):
 
         blocked = self.run_cli("archive", str(self.root), expected=1)
         self.assertIn("尚有未解决材料", blocked.stderr)
+        (case / ".DS_Store").write_text("metadata", encoding="utf-8")
+        (case / "~$报销明细表.xlsx").write_text("office lock", encoding="utf-8")
+        legacy_extract = case / "报销归档_历史解压"
+        legacy_extract.mkdir()
+        (legacy_extract / "旧明细表.xlsx").write_text("legacy extract", encoding="utf-8")
         self.run_cli("archive", str(self.root), "--force")
         self.assertEqual(self.state()["status"], "archived")
         finished_case = self.root / "已结束" / self.case_name
         self.assertTrue(finished_case.is_dir())
         self.assertFalse(case.exists())
-        self.assertEqual(len(list(finished_case.glob("报销归档_*.zip"))), 1)
+        archive_path = finished_case / "2026-08-18至08-20-南京-测试用户-报销文件.zip"
+        self.assertTrue(archive_path.is_file())
+        with zipfile.ZipFile(archive_path) as archive:
+            self.assertNotIn(".DS_Store", archive.namelist())
+            self.assertNotIn("~$报销明细表.xlsx", archive.namelist())
+            self.assertFalse(any(name.startswith("报销归档_历史解压/") for name in archive.namelist()))
 
     def test_reimport_recovers_a_missing_registered_file_instead_of_marking_duplicate(self) -> None:
         self.init()
@@ -389,7 +410,7 @@ class ClaimMateWorkflowTest(unittest.TestCase):
             "一张汇总发票可以对应多笔付款记录",
             "付款合计与发票价税合计核验",
             "付款差额",
-            "归档北京出差报销",
+            "时间-地点-报销人-报销文件.zip",
         ):
             self.assertIn(expected, guide)
         top_level_sections = [line for line in guide.splitlines() if line.startswith("## ")]
@@ -893,6 +914,8 @@ class ClaimMateWorkflowTest(unittest.TestCase):
         self.assertEqual(len(rows), 1)
         self.assertEqual(rows[0]["收款人"], "测试用户")
         self.assertEqual(rows[0]["金额（元）"], "268.00")
+        self.assertNotIn("/", rows[0]["材料文件"])
+        self.assertNotIn("\\", rows[0]["材料文件"])
         with zipfile.ZipFile(xlsx_path) as workbook:
             sheet_xml = unescape(workbook.read("xl/worksheets/sheet1.xml").decode("utf-8"))
         self.assertIn("测试用户", sheet_xml)
@@ -1035,6 +1058,33 @@ class ClaimMateWorkflowTest(unittest.TestCase):
         document = next(iter(beijing["documents"].values()))
         self.assertTrue(document["current_path"].startswith(f"流程中/{beijing['case_name']}/"))
 
+    def test_email_material_waits_without_a_project_and_new_project_revisits_it_once(self) -> None:
+        for path in self.root.iterdir():
+            path.unlink()
+        self.run_cli("init", str(self.root))
+        filename = "奥地利酒店_680元_发票.txt"
+        source = self.root / "待处理" / filename
+        source.write_text("austria hotel invoice", encoding="utf-8")
+
+        checked = self.run_cli("check", str(self.root))
+        self.assertIn("当前还没有出差报销项目", checked.stdout)
+        registry = self.registry()
+        self.assertEqual(len(registry["unassigned_documents"]), 1)
+        held = self.root / "待处理" / "待归属" / filename
+        self.assertTrue(held.is_file())
+        self.assertEqual(intake_core.discover_inputs(self.root), [])
+
+        created = self.run_cli("new", str(self.root), "--case-name", "2026-06_奥地利")
+        self.assertIn("重新判断并归入 1 个待归属材料", created.stdout)
+        registry = self.registry()
+        self.assertFalse(registry["unassigned_documents"])
+        project = next(iter(registry["projects"].values()))
+        self.assertEqual(len(project["documents"]), 1)
+        self.assertFalse(held.exists())
+        self.assertTrue(list(
+            (self.root / "流程中" / "2026-06_奥地利").glob("EXP-*_住宿费_680元_发票.txt")
+        ))
+
     def test_conversational_correction_can_reassign_several_files(self) -> None:
         for path in self.root.iterdir():
             path.unlink()
@@ -1112,7 +1162,10 @@ class ClaimMateWorkflowTest(unittest.TestCase):
         report = json.loads((case / "处理报告.json").read_text(encoding="utf-8"))
         self.assertTrue(report["finance_feedback_review"]["passed"])
         self.run_cli("archive", str(self.root))
-        archive_path = next((self.root / "已结束" / "2026-06_北京出差").glob("报销归档_*.zip"))
+        archive_path = (
+            self.root / "已结束" / "2026-06_北京出差" /
+            "2026-06-北京出差-测试用户-报销文件.zip"
+        )
         with zipfile.ZipFile(archive_path) as archive:
             names = archive.namelist()
         self.assertIn("manifest/finance-feedback-review.json", names)
