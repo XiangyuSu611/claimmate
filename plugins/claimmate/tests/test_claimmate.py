@@ -338,6 +338,9 @@ class ClaimMateWorkflowTest(unittest.TestCase):
         self.assertIn("尚有未解决材料", blocked.stderr)
         (case / ".DS_Store").write_text("metadata", encoding="utf-8")
         (case / "~$报销明细表.xlsx").write_text("office lock", encoding="utf-8")
+        legacy_extract = case / "报销归档_历史解压"
+        legacy_extract.mkdir()
+        (legacy_extract / "旧明细表.xlsx").write_text("legacy extract", encoding="utf-8")
         self.run_cli("archive", str(self.root), "--force")
         self.assertEqual(self.state()["status"], "archived")
         finished_case = self.root / "已结束" / self.case_name
@@ -348,6 +351,7 @@ class ClaimMateWorkflowTest(unittest.TestCase):
         with zipfile.ZipFile(archive_path) as archive:
             self.assertNotIn(".DS_Store", archive.namelist())
             self.assertNotIn("~$报销明细表.xlsx", archive.namelist())
+            self.assertFalse(any(name.startswith("报销归档_历史解压/") for name in archive.namelist()))
 
     def test_reimport_recovers_a_missing_registered_file_instead_of_marking_duplicate(self) -> None:
         self.init()

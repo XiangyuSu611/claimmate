@@ -727,6 +727,8 @@ def write_archive_zip(
                 if not path.is_file() or path in {archive_path, temporary}:
                     continue
                 member = path.relative_to(finished_case)
+                if len(member.parts) != 1:
+                    continue
                 if any(part.startswith(".") or part.startswith("~$") for part in member.parts):
                     continue
                 if path.suffix.lower() == ".zip":
