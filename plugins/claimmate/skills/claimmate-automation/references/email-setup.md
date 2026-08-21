@@ -1,6 +1,6 @@
 # Email intake
 
-The built-in adapter supports IMAP mailboxes that accept an app password or durable access token. Create or choose a dedicated ASCII mailbox or label such as `ClaimMate`, and route reimbursement messages there. This prevents unrelated email attachments from entering the workspace.
+The built-in adapter supports IMAP mailboxes that accept an app password or durable access token. `INBOX` can be used directly and a `ClaimMate` label is not required. A dedicated ASCII mailbox or label is optional when the user controls routing and wants to reduce unrelated attachments. If an attachment cannot yet be matched to a project, keep it in `待处理/待归属`; the watcher excludes that holding folder, and creating a project triggers one re-evaluation.
 
 During first setup, ask whether the user wants email intake. If they decline, record `skip` and continue to Scheme confirmation. If they choose email, complete the configuration below before confirming the Scheme; never infer an email choice from an address found elsewhere.
 
@@ -10,7 +10,7 @@ During first setup, ask whether the user wants email intake. If they decline, re
 python scripts/automation.py configure <folder> \
   --email-provider gmail \
   --email-username user@example.com \
-  --email-mailbox ClaimMate \
+  --email-mailbox INBOX \
   --enable-email
 
 python scripts/automation.py credentials-set <folder>
