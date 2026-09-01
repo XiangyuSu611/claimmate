@@ -2,7 +2,7 @@
 
 ClaimMate 是一个面向出差报销的 ChatGPT/Codex 插件。它使用大模型识别材料类型、费用类型、金额、项目归属和材料配对，并通过可维护的报销要求表检查材料完整性。
 
-当前稳定版本：`1.0.0`
+当前稳定版本：`1.0.1`
 
 ## 主要功能
 
@@ -32,12 +32,12 @@ codex plugin add claimmate@claimmate
 
 ClaimMate 会先询问使用者姓名、是否接入邮箱，并展示报销要求；确认完整要求后才会处理材料和启动后台监听器。
 
-## 固定安装 1.0.0
+## 固定安装 1.0.1
 
 如需固定使用稳定版本，而不是跟随 `main`：
 
 ```bash
-codex plugin marketplace add XiangyuSu611/claimmate --ref v1.0.0
+codex plugin marketplace add XiangyuSu611/claimmate --ref v1.0.1
 codex plugin add claimmate@claimmate
 ```
 
@@ -71,3 +71,7 @@ codex plugin marketplace remove claimmate
 ```
 
 卸载插件不会自动删除已经建立的报销工作区或归档文件。
+
+## 许可证
+
+ClaimMate 使用 [MIT License](LICENSE)。你可以使用、复制、修改、发布和分发，但需保留原版权和许可声明。
